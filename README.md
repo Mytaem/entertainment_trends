@@ -11,7 +11,7 @@
 Dự án này nhằm mục đích xây dựng một quy trình dữ liệu (Data Pipeline) từ khâu thu thập (Crawling) đến phân tích (Analytics) để trả lời các câu hỏi về yếu tố tạo nên một video "Trending" trên YouTube.
 
 **Mục tiêu chính:**
-* Thu thập dữ liệu của 10.000+ video từ YouTube API.
+* Thu thập dữ liệu của 10.000+ data về các xu hướng trên mạng xã hội từ Youtube, Spotify,....
 * Lưu trữ dữ liệu thô (Raw Data) vào Data Lake (MinIO).
 * Kiểm chứng giả thuyết về "Khung giờ vàng" và "Tương tác tiêu cực" (Dislike/Negative Comments).
 
