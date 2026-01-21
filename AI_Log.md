@@ -1265,3 +1265,651 @@ Tham số khóa	regionCode (ví dụ: 'VN', 'US')	q (query) với filter year:YY
 Kết quả	Dataset đa văn hóa, xu hướng toàn cầu	Dataset đa thời đại, lịch sử âm nhạc
 Rủi ro	Dữ liệu trùng lặp (cần lọc kỹ)	Tốc độ chậm (do phải sleep tránh lỗi 429)
 Nếu giáo viên hỏi: "Tại sao em không dùng lệnh Search bình thường?" Bạn trả lời: "Thưa thầy/cô, lệnh Search của YouTube quá tốn kém tài nguyên (gấp 100 lần), còn lệnh Search của Spotify thì bị giới hạn số lượng kết quả trả về. Hai phương pháp trên là cách tối ưu nhất để sinh viên có thể xây dựng bộ dữ liệu lớn (Large Scale Dataset) mà không cần trả phí cho bản Enterprise."
+---------------------------------------
+bây giờ tao sẽ hỏi m là hãy hướng dẫn cho tao chi tiết các sử dụng docker phục vụ cho việc Phục vụ cho:
+
+Thu thập dữ liệu
+
+Lưu trữ
+
+Xử lý
+
+Phân tích & mô hình hóa và tôi đang nghiên cứu về chủ để CHỦ ĐỀ 4: TRENDING CONTENT (YouTube/Spotify)
+Nguồn: YouTube/Spotify API.
+Vấn đề Cốt lõi:
+Thời điểm vàng: "Upload video vào khung giờ hành chính hay khung giờ nghỉ ngơi sẽ dễ lọt Top Trending hơn?"
+Tương tác: "Lượng Dislike (hoặc Comment tiêu cực) có ảnh hưởng đến khả năng viral của video không?"
+Câu hỏi MỞ (Gợi ý): Phân tích tiêu đề (Title): Các video có từ khóa "giật gân" (SỐC, LỘ, REVIEW) có thực sự nhiều view hơn trung bình không? thì m hãy hướng dẫn cho tao cái pineline sau  
+
+Dưới đây là hướng dẫn A–Z cách dùng Docker để dựng pipeline đúng như hình của m: (1) Thu thập → (2) Data Lake (MinIO) → (3) ETL/Processing → (4) Database (Postgres) → (5) Analytics (Jupyter/RStudio) cho chủ đề Trending Content (YouTube/Spotify).
+
+0) Mục tiêu pipeline (đúng bài của m)
+Mục tiêu dữ liệu
+
+YouTube: video trending VN (hoặc theo region), lấy: publishedAt, viewCount, likeCount, commentCount, duration, title, categoryId, channel, …
+
+Spotify: chart/trending (tuỳ endpoint m dùng), lấy: track, artist, popularity, release_date, …
+
+Trả lời 3 câu hỏi chính
+
+Thời điểm vàng: upload giờ hành chính vs giờ nghỉ → ảnh hưởng đến trending?
+
+Tương tác tiêu cực: dislike (nếu không lấy được) hoặc comment tiêu cực → ảnh hưởng viral/trending?
+
+Keyword giật gân trong title (“SỐC”, “LỘ”, “REVIEW”, …) → view/trending cao hơn trung bình?
+
+1) Cài trước (Windows)
+
+Cài Docker Desktop
+
+Bật WSL2 (Docker Desktop sẽ gợi ý)
+
+Mở terminal (PowerShell hoặc Windows Terminal)
+
+Kiểm tra:
+
+docker -v
+docker compose version
+
+2) Cấu trúc thư mục dự án (m copy y chang)
+
+Tạo folder:
+
+trending-pipeline/
+  docker-compose.yml
+  .env
+  ingestion/
+    Dockerfile
+    requirements.txt
+    src/
+      youtube_fetch.py
+      spotify_fetch.py
+      write_to_minio.py
+  etl/
+    Dockerfile
+    requirements.txt
+    src/
+      etl_youtube.py
+      sentiment.py
+      load_to_postgres.py
+  analytics/
+    notebooks/
+      01_eda_youtube.ipynb
+      02_hypothesis.ipynb
+      03_model.ipynb
+  sql/
+    init.sql
+  data/
+    logs/
+
+3) File .env (cực quan trọng)
+
+Tạo file .env trong root:
+
+# ===== YouTube API =====
+YOUTUBE_API_KEY=YOUR_KEY
+YOUTUBE_REGION=VN
+
+# ===== Spotify API (Client Credentials) =====
+SPOTIFY_CLIENT_ID=YOUR_ID
+SPOTIFY_CLIENT_SECRET=YOUR_SECRET
+
+# ===== MinIO =====
+MINIO_ROOT_USER=minio
+MINIO_ROOT_PASSWORD=minio12345
+MINIO_BUCKET_RAW=raw
+MINIO_BUCKET_CLEAN=clean
+
+# ===== Postgres =====
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=trending_db
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+
+4) docker-compose.yml (dựng đủ 5 container)
+
+Tạo file docker-compose.yml:
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    env_file: .env
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  mc:
+    image: minio/mc:latest
+    container_name: mc
+    env_file: .env
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 3;
+      mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD;
+      mc mb -p local/$$MINIO_BUCKET_RAW || true;
+      mc mb -p local/$$MINIO_BUCKET_CLEAN || true;
+      echo 'MinIO buckets ready';
+      tail -f /dev/null
+      "
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    env_file: .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  ingestion:
+    build: ./ingestion
+    container_name: ingestion
+    env_file: .env
+    depends_on:
+      - minio
+      - mc
+    volumes:
+      - ./data/logs:/app/logs
+    command: ["python", "-u", "src/youtube_fetch.py"]
+
+  etl:
+    build: ./etl
+    container_name: etl
+    env_file: .env
+    depends_on:
+      - minio
+      - postgres
+    volumes:
+      - ./data/logs:/app/logs
+    command: ["python", "-u", "src/etl_youtube.py"]
+
+  analytics:
+    image: jupyter/datascience-notebook:latest
+    container_name: analytics
+    env_file: .env
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./analytics/notebooks:/home/jovyan/work
+    depends_on:
+      - postgres
+      - minio
+
+volumes:
+  minio_data:
+  pg_data:
+
+
+Giải thích đúng pipeline:
+
+ingestion = crawler gọi API → lưu raw JSON vào MinIO bucket raw/
+
+etl = lấy raw từ MinIO → làm sạch + feature + sentiment → lưu clean/ và đẩy bảng vào Postgres
+
+analytics = Jupyter/RStudio để EDA + test giả thuyết + modeling (đọc từ Postgres hoặc MinIO)
+
+5) Ingestion container (Thu thập dữ liệu)
+ingestion/Dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY src ./src
+
+ingestion/requirements.txt
+requests
+pandas
+minio
+python-dotenv
+isodate
+
+ingestion/src/youtube_fetch.py (mẫu chạy được)
+import os, json, time
+import requests
+from datetime import datetime, timezone
+from minio import Minio
+
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+REGION = os.getenv("YOUTUBE_REGION", "VN")
+
+MINIO_ROOT_USER = os.getenv("MINIO_ROOT_USER")
+MINIO_ROOT_PASSWORD = os.getenv("MINIO_ROOT_PASSWORD")
+BUCKET_RAW = os.getenv("MINIO_BUCKET_RAW", "raw")
+
+minio_client = Minio(
+    "minio:9000",
+    access_key=MINIO_ROOT_USER,
+    secret_key=MINIO_ROOT_PASSWORD,
+    secure=False
+)
+
+def fetch_trending_videos(region="VN", max_results=50):
+    url = "https://www.googleapis.com/youtube/v3/videos"
+    params = {
+        "part": "snippet,contentDetails,statistics",
+        "chart": "mostPopular",
+        "regionCode": region,
+        "maxResults": max_results,
+        "key": YOUTUBE_API_KEY,
+    }
+    r = requests.get(url, params=params, timeout=60)
+    r.raise_for_status()
+    return r.json()
+
+def upload_json(obj, object_name):
+    data = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+    minio_client.put_object(
+        BUCKET_RAW,
+        object_name,
+        data=data,
+        length=len(data),
+        content_type="application/json"
+    )
+
+def main():
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    payload = fetch_trending_videos(REGION, max_results=50)
+
+    object_name = f"youtube/trending_{REGION}/{ts}.json"
+    upload_json(payload, object_name)
+
+    print(f"[OK] Uploaded raw -> s3://{BUCKET_RAW}/{object_name}")
+    # nếu m muốn chạy định kỳ 1h/lần thì để vòng lặp:
+    # while True: ... sleep(3600)
+
+if __name__ == "__main__":
+    if not YOUTUBE_API_KEY:
+        raise SystemExit("Missing YOUTUBE_API_KEY")
+    main()
+
+
+Spotify cũng làm y chang: gọi API → save raw JSON vào raw/spotify/...
+
+6) ETL container (Xử lý / Feature Engineering)
+etl/Dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY src ./src
+
+etl/requirements.txt
+pandas
+minio
+psycopg2-binary
+python-dotenv
+textblob
+
+Logic ETL cần làm (đúng đề tài)
+
+Từ raw JSON YouTube → clean table + feature:
+
+upload_hour_local (giờ VN) từ snippet.publishedAt
+
+is_office_hour (8–17) vs is_rest_hour (18–23) vs late_night (0–7)
+
+title_has_shock_kw (SỐC|LỘ|REVIEW|…)
+
+engagement_rate = (like + comment)/view
+
+neg_comment_rate = (#comment tiêu cực / tổng comment) → nếu m crawl comment
+
+Nếu chưa crawl comments: để bước mở rộng (phần dưới)
+
+etl/src/etl_youtube.py (mẫu khung)
+import os, json, io, re
+import pandas as pd
+from datetime import datetime
+from minio import Minio
+import psycopg2
+
+MINIO_ROOT_USER = os.getenv("MINIO_ROOT_USER")
+MINIO_ROOT_PASSWORD = os.getenv("MINIO_ROOT_PASSWORD")
+BUCKET_RAW = os.getenv("MINIO_BUCKET_RAW", "raw")
+BUCKET_CLEAN = os.getenv("MINIO_BUCKET_CLEAN", "clean")
+
+PG_HOST = os.getenv("POSTGRES_HOST", "postgres")
+PG_DB = os.getenv("POSTGRES_DB", "trending_db")
+PG_USER = os.getenv("POSTGRES_USER", "postgres")
+PG_PASS = os.getenv("POSTGRES_PASSWORD", "postgres")
+
+minio_client = Minio(
+    "minio:9000",
+    access_key=MINIO_ROOT_USER,
+    secret_key=MINIO_ROOT_PASSWORD,
+    secure=False
+)
+
+SHOCK_RE = re.compile(r"\b(SỐC|SOC|LỘ|LO|REVIEW|DRAMA|PHỐT|PHOT)\b", re.IGNORECASE)
+
+def list_latest_youtube_raw(prefix="youtube/trending_VN/"):
+    # lấy newest file: đơn giản hoá: list rồi sort theo name timestamp
+    objs = list(minio_client.list_objects(BUCKET_RAW, prefix=prefix, recursive=True))
+    if not objs:
+        raise RuntimeError("No raw objects found in MinIO")
+    objs.sort(key=lambda o: o.object_name, reverse=True)
+    return objs[0].object_name
+
+def read_json(object_name):
+    resp = minio_client.get_object(BUCKET_RAW, object_name)
+    data = resp.read()
+    return json.loads(data.decode("utf-8"))
+
+def transform(payload):
+    items = payload.get("items", [])
+    rows = []
+    for it in items:
+        sn = it.get("snippet", {})
+        st = it.get("statistics", {})
+        cd = it.get("contentDetails", {})
+
+        published = sn.get("publishedAt")
+        dt = pd.to_datetime(published, utc=True, errors="coerce")
+        # đổi sang giờ VN
+        hour_vn = (dt + pd.Timedelta(hours=7)).hour if pd.notna(dt) else None
+
+        title = sn.get("title", "")
+        rows.append({
+            "video_id": it.get("id"),
+            "title": title,
+            "published_at": published,
+            "upload_hour_vn": hour_vn,
+            "is_office_hour": int(hour_vn is not None and 8 <= hour_vn <= 17),
+            "is_rest_hour": int(hour_vn is not None and 18 <= hour_vn <= 23),
+            "is_late_night": int(hour_vn is not None and 0 <= hour_vn <= 7),
+            "shock_kw": int(bool(SHOCK_RE.search(title))),
+            "view_count": int(st.get("viewCount", 0) or 0),
+            "like_count": int(st.get("likeCount", 0) or 0),
+            "comment_count": int(st.get("commentCount", 0) or 0),
+            "duration": cd.get("duration"),
+            "channel_title": sn.get("channelTitle"),
+            "category_id": sn.get("categoryId"),
+        })
+    df = pd.DataFrame(rows)
+    df["engagement_rate"] = (df["like_count"] + df["comment_count"]) / df["view_count"].replace(0, pd.NA)
+    return df
+
+def upload_clean_csv(df, object_name):
+    buf = io.BytesIO()
+    df.to_csv(buf, index=False)
+    buf.seek(0)
+    minio_client.put_object(
+        BUCKET_CLEAN, object_name, data=buf, length=buf.getbuffer().nbytes,
+        content_type="text/csv"
+    )
+
+def load_to_postgres(df):
+    conn = psycopg2.connect(host=PG_HOST, dbname=PG_DB, user=PG_USER, password=PG_PASS)
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS youtube_trending (
+      video_id TEXT PRIMARY KEY,
+      title TEXT,
+      published_at TIMESTAMPTZ,
+      upload_hour_vn INT,
+      is_office_hour INT,
+      is_rest_hour INT,
+      is_late_night INT,
+      shock_kw INT,
+      view_count BIGINT,
+      like_count BIGINT,
+      comment_count BIGINT,
+      engagement_rate DOUBLE PRECISION,
+      duration TEXT
+
+bây giờ tao giả bộ tao với m tạo cuộc trò chuyện giả ý , m sẽ dựa vào hình này nói là tao nên làm như này như này, m hiểu không
+
+Ok, hiểu 👍
+Giờ ta giả bộ đang ngồi nói chuyện – review kiến trúc hệ thống dựa đúng cái hình Docker Architecture này, tao sẽ đóng vai người hướng dẫn, nói cho m “nên làm như này – vì sao – làm để làm gì”, đúng văn thuyết trình / bảo vệ bài / nói chuyện với thầy.
+
+🎭 Cuộc trò chuyện giả lập
+👤 Tao (mày – sinh viên / người làm project)
+
+Thầy ơi, đây là kiến trúc hệ thống Docker cho bài nghiên cứu Trending Content YouTube / Spotify của em.
+
+👨‍🏫 Thầy (tao – người hướng dẫn)
+
+👉 Ừ, thầy nhìn hình này là hiểu liền.
+Bây giờ thầy nói cho em luồng tư duy đúng nhé, không phải Docker cho vui, mà là Docker để chứng minh khoa học.
+
+1️⃣ External World – Nguồn dữ liệu (ngoài Docker)
+
+Thầy:
+Ở bên trái hình, em ghi External World, tức là:
+
+YouTube Data API
+
+Spotify Web API
+
+(mở rộng) TikTok / Google Trends / Threads
+
+👉 Cái này rất quan trọng:
+Docker KHÔNG crawl web bừa bãi, mà:
+
+API chính thống
+
+Có timestamp
+
+Có region
+
+Có metadata → phục vụ phân tích
+
+📌 Liên hệ đề tài của em
+
+Muốn biết “giờ đăng ảnh hưởng trending” → cần publishedAt
+
+Muốn biết “viral / tiêu cực” → cần commentCount, sentiment
+
+Muốn biết “title giật gân” → cần title
+
+➡️ Nguồn API đáp ứng được câu hỏi nghiên cứu
+
+2️⃣ Container 1 – Ingestion (Thu thập dữ liệu)
+
+Thầy:
+Container này em làm rất đúng tư duy data engineer.
+
+Em nên nói thế này:
+
+“Container Ingestion chịu trách nhiệm thu thập dữ liệu thô (raw data) từ YouTube & Spotify API và lưu nguyên bản, chưa xử lý.”
+
+Bên trong container này:
+
+Python crawler
+
+Gọi API theo chu kỳ
+
+Lưu ra JSON thô
+
+📌 Vì sao không xử lý luôn?
+👉 Vì nguyên tắc Data Lake:
+
+❝ Raw data phải được bảo toàn để:
+
+truy vết
+
+debug
+
+tái xử lý khi giả thuyết thay đổi ❞
+
+📌 Liên hệ câu hỏi nghiên cứu
+
+Sau này nếu thầy hỏi:
+
+“Em phân tích giờ upload theo UTC hay giờ VN?”
+
+Em có thể nói:
+
+“Dạ em quay lại raw JSON để xử lý lại timezone”
+
+👉 Điểm cộng lớn
+
+3️⃣ Container 2 – Data Lake (MinIO S3)
+
+Thầy:
+Container MinIO này là linh hồn của hệ thống.
+
+Em nên nói:
+
+“Em sử dụng MinIO mô phỏng S3 Data Lake để lưu trữ dữ liệu raw & clean theo kiến trúc lakehouse.”
+
+Trong MinIO:
+
+raw/
+
+youtube/trending/VN/2026-01-21.json
+
+spotify/chart/2026-01-21.json
+
+clean/
+
+youtube_trending_clean.csv
+
+spotify_trending_clean.parquet
+
+📌 Vì sao không lưu file luôn vào Postgres?
+
+Raw JSON không phù hợp SQL
+
+Data Lake:
+
+rẻ
+
+mở rộng
+
+scale tốt
+
+📌 Liên hệ đề tài
+
+Sau này muốn:
+
+đổi cách define “giờ vàng”
+
+đổi keyword giật gân
+
+thêm ngôn ngữ khác
+
+➡️ Chỉ cần re-run ETL, không cần crawl lại
+
+4️⃣ Container 3 – ETL / Processing (Xử lý dữ liệu)
+
+Thầy:
+Đây là nơi khoa học bắt đầu, không còn là crawl nữa.
+
+Em nên nói rõ:
+
+“Container ETL chịu trách nhiệm chuẩn hóa dữ liệu và tạo feature phục vụ kiểm định giả thuyết.”
+
+Ví dụ feature em tạo:
+
+upload_hour_vn
+
+is_office_hour (8–17)
+
+is_rest_hour (18–23)
+
+shock_keyword = 1/0
+
+engagement_rate
+
+negative_comment_ratio
+
+📌 Liên hệ trực tiếp câu hỏi nghiên cứu
+
+Câu hỏi	Feature
+Giờ hành chính vs nghỉ ngơi	is_office_hour, is_rest_hour
+Tương tác tiêu cực	negative_comment_ratio
+Title giật gân	shock_keyword
+
+👉 Thầy sẽ rất thích chỗ này, vì:
+
+Feature ≠ cảm tính
+
+Feature = biến định lượng → test thống kê
+
+5️⃣ Container 4 – Database (PostgreSQL)
+
+Thầy:
+Postgres là nơi dữ liệu đã sẵn sàng để phân tích.
+
+Em nói thế này:
+
+“Sau ETL, dữ liệu được nạp vào PostgreSQL dưới dạng bảng chuẩn hóa để phục vụ EDA, kiểm định giả thuyết và mô hình hóa.”
+
+Ví dụ bảng:
+
+youtube_trending
+
+spotify_trending
+
+📌 Vì sao cần DB riêng?
+
+JOIN
+
+GROUP BY
+
+FILTER
+
+Tối ưu cho:
+
+RStudio
+
+Jupyter
+
+SQL analysis
+
+👉 Thầy nhìn là thấy tư duy end-to-end
+
+6️⃣ Container 5 – Analytics (Jupyter / RStudio)
+
+Thầy:
+Đây là nơi em trả lời câu hỏi khoa học.
+
+Em nên nói:
+
+“Container Analytics dùng để thực hiện EDA, kiểm định giả thuyết và xây dựng mô hình dự đoán khả năng trending.”
+
+Em làm gì ở đây?
+
+Boxplot: giờ upload vs view
+
+T-test: office vs rest hour
+
+Correlation: negative sentiment vs view
+
+Regression / Logistic:
+
+Predict trending = f(hour, keyword, sentiment)
+
+📌 Liên hệ lại đề tài
+
+Không phải “em thấy”
+
+Mà là:
+
+“Kết quả cho thấy sự khác biệt có ý nghĩa thống kê (p < 0.05)”
+
+👉 Đúng chất nghiên cứu
+
+🎯 Chốt lại – Em nên nói 1 câu thế này
+
+“Hệ thống Docker của em được thiết kế theo kiến trúc Data Engineering chuẩn, tách biệt rõ ràng giữa thu thập, lưu trữ, xử lý và phân tích, nhằm đảm bảo tính tái lập, mở rộng và kiểm định khoa học cho bài toán Trending Content.”
+
+Nếu m muốn 👉 tao sẽ đóng tiếp vai thầy:
+
+Bắt bẻ câu hỏi khó 💀
+
+Giả lập bảo vệ đồ án / vấn đáp
+
+Hoặc tao viết cho m đoạn thuyết trình 2–3 phút đúng chuẩn slide
+
+Chọn đi, m muốn level nào 🔥
