@@ -2,7 +2,7 @@ ADY201m - TikTok & YouTube Content Trend Analysis
 
 Student Info: * Dương Thị Mỹ Tâm - QE200009 
 
-                          Trần Vân Khánh - QE200083 
+              * Trần Vân Khánh - QE200083 
 
 
 Project Name: Analysis of Viral and Trending Factors on Digital Content Platforms Course: ADY201m – AI, Data Science with Python & SQL 
