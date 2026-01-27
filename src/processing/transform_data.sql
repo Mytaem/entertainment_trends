@@ -71,3 +71,18 @@ SELECT
     ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) || '%' AS percentage
 FROM staging_social_data
 GROUP BY platform;
+--Kiểm tra phân bổ Video theo khung giờ (Golden Hour)
+SELECT 
+    EXTRACT(HOUR FROM upload_date) AS khung_gio,
+    COUNT(*) AS so_luong_video
+FROM staging_social_data
+GROUP BY khung_gio
+ORDER BY so_luong_video DESC;
+
+--So sánh tương tác trung bình giữa 2 nền tảng
+SELECT 
+    platform, 
+    ROUND(AVG(likes), 0) AS likes_trung_binh,
+    SUM(likes) AS tong_luot_like
+FROM staging_social_data
+GROUP BY platform;
