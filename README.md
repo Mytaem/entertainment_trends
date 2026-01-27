@@ -1,61 +1,65 @@
-ADY201m - TikTok & YouTube Content Trend Analysis
+# 📊 Project: Analysis of Viral and Trending Factors on Digital Content Platforms
 
-Student Info: * Dương Thị Mỹ Tâm - QE200009 
+![Course](https://img.shields.io/badge/Course-ADY201m-green?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.10+-blue?style=flat-square&logo=python)
+![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-336791?style=flat-square&logo=postgresql)
+![Docker](https://img.shields.io/badge/Container-Docker-2496ED?style=flat-square&logo=docker)
 
-              * Trần Vân Khánh - QE200083 
+---
 
+## 👨‍🎓 Student Info (Thông tin sinh viên)
 
-Project Name: Analysis of Viral and Trending Factors on Digital Content Platforms Course: ADY201m – AI, Data Science with Python & SQL 
+| STT | Họ và Tên | MSSV |
+|:---:|:---|:---|
+| 1 | **Dương Thị Mỹ Tâm** | QE200009 |
+| 2 | **Trần Vân Khánh** | QE200083 |
 
-📖 Giới thiệu (Introduction)
-Dự án tập trung nghiên cứu sự khác biệt giữa hai cơ chế hình thành xu hướng: nội dung ngắn, lan truyền nhanh trên TikTok và nội dung dài, bền vững trên YouTube. Bằng cách xây dựng hệ thống thu thập dữ liệu tự động, nhóm hướng tới việc xác định các yếu tố then chốt giúp một nội dung trở nên viral hoặc lọt vào danh sách Trending.
+---
 
-Mục tiêu chính:
+## 📖 Giới thiệu (Introduction)
 
+> **Mô tả:** Dự án tập trung nghiên cứu sự khác biệt giữa hai cơ chế hình thành xu hướng: nội dung ngắn, lan truyền nhanh trên **TikTok** và nội dung dài, bền vững trên **YouTube**. Bằng cách xây dựng hệ thống thu thập dữ liệu tự động, nhóm hướng tới việc xác định các yếu tố then chốt giúp một nội dung trở nên viral hoặc lọt vào danh sách Trending.
 
-Thu thập dữ liệu: Xây dựng dataset từ dữ liệu công khai trên TikTok (Hashtag-based) và YouTube (Trending-based).
+### 🎯 Mục tiêu chính:
+1.  **Thu thập dữ liệu:** Xây dựng dataset từ dữ liệu công khai trên TikTok (Hashtag-based) và YouTube (Trending-based).
+2.  **Chuẩn hóa:** Đồng nhất cấu trúc metadata (thời gian, tương tác, tiêu đề) để so sánh chéo giữa hai nền tảng.
+3.  **Kiểm chứng giả thuyết:** Phân tích tác động của *"Khung giờ vàng"*, *"Tiêu đề giật gân (Clickbait)"* và *"Mức độ duy trì tương tác"*.
 
+---
 
-Chuẩn hóa: Đồng nhất cấu trúc metadata (thời gian, tương tác, tiêu đề) để so sánh chéo giữa hai nền tảng.
+## 🛠 Tech Stack (Advanced Tech Stack)
 
-
-Kiểm chứng giả thuyết: Phân tích tác động của "Khung giờ vàng", "Tiêu đề giật gân (Clickbait)" và "Mức độ duy trì tương tác".
-
-🛠 Tech Stack (Advanced Tech Stack)
 Dựa trên kiến trúc hệ thống đề xuất:
 
+| Thành phần | Công nghệ sử dụng |
+| :--- | :--- |
+| **Language** | Python (Playwright cho TikTok, Data API cho YouTube) |
+| **Data Ingestion** | Python Crawler & YouTube Data API |
+| **Storage** | JSON/CSV (Raw Data) & SQL Database (PostgreSQL) |
+| **Containerization** | Docker & Docker Compose |
+| **Analysis & Version Control** | Pandas, SQL, GitHub |
 
-Language: Python (Playwright cho TikTok, Data API cho YouTube).
+---
 
+## 📂 Cấu trúc dự án (Project Structure)
 
-Data Ingestion: Python Crawler & YouTube Data API.
-
-
-Storage: JSON/CSV (Raw Data) & SQL Database (PostgreSQL).
-
-
-Containerization: Docker & Docker Compose.
-
-
-Analysis & Version Control: Pandas, SQL, GitHub.
-
-📂 Cấu trúc dự án (Project Structure)
-Plaintext
+```plaintext
 QE200009_QE200083_Content_Trend_Analysis/
-├── configs/               # Cấu hình Database & API Keys (YouTube API)
-├── data/                  # Dữ liệu thô (JSON/CSV) từ TikTok & YouTube
-├── docker/                # Dockerfile cho PostgreSQL và các môi trường chạy Python
-├── notebooks/             # Jupyter Notebooks: EDA và Kiểm định giả thuyết (Hypothesis Testing)
-├── reports/               # Báo cáo ADY201m (Research Proposal, Data Report)
-├── src/                   # Source code chính
-│   ├── ingestion/         # TikTok Crawler (Playwright) & YouTube API Script
-│   ├── processing/        # Code làm sạch, chuẩn hóa múi giờ và định dạng metadata
-│   └── utils/             # Các hàm bổ trợ xử lý chuỗi và tính toán engagement rate
-├── .gitignore             # Loại bỏ các file .env và dữ liệu nặng
-├── AI_Log.md              # Nhật ký sử dụng AI hỗ trợ dự án
-├── docker-compose.yml     # Khởi chạy hệ thống (PostgreSQL, Dockerized App)
-├── README.md              # Hướng dẫn cài đặt và vận hành pipeline
-└── requirements.txt       # Thư viện: playwright, google-api-python-client, pandas, sqlalchemy
+├── configs/            # Cấu hình Database & API Keys (YouTube API)
+├── data/               # Dữ liệu thô (JSON/CSV) từ TikTok & YouTube
+├── docker/             # Dockerfile cho PostgreSQL và các môi trường chạy Python
+├── notebooks/          # Jupyter Notebooks: EDA và Kiểm định giả thuyết (Hypothesis Testing)
+├── reports/            # Báo cáo ADY201m (Research Proposal, Data Report)
+├── src/                # Source code chính
+│   ├── ingestion/      # TikTok Crawler (Playwright) & YouTube API Script
+│   ├── processing/     # Code làm sạch, chuẩn hóa múi giờ và định dạng metadata
+│   └── utils/          # Các hàm bổ trợ xử lý chuỗi và tính toán engagement rate
+├── .gitignore          # Loại bỏ các file .env và dữ liệu nặng
+├── AI_Log.md           # Nhật ký sử dụng AI hỗ trợ dự án
+├── docker-compose.yml  # Khởi chạy hệ thống (PostgreSQL, Dockerized App)
+├── README.md           # Hướng dẫn cài đặt và vận hành pipeline
+└── requirements.txt    # Thư viện: playwright, google-api-python-client, pandas, sqlalchemy
+
 🎯 Câu hỏi nghiên cứu & Giả thuyết
 Dự án tập trung giải quyết các bài toán:
 
