@@ -86,3 +86,13 @@ SELECT
     SUM(likes) AS tong_luot_like
 FROM staging_social_data
 GROUP BY platform;
+---------------
+SELECT 
+    content_id, 
+    platform, 
+    title, 
+    likes, 
+    upload_date 
+FROM staging_social_data 
+ORDER BY upload_date DESC 
+LIMIT 15;
