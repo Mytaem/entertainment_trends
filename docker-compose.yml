@@ -4,14 +4,13 @@ services:
     container_name: ady_postgres
     restart: always
     environment:
-      POSTGRES_USER: mytam_admin
-      POSTGRES_PASSWORD: password123
+      POSTGRES_USER: mytam_vankhanh
+      POSTGRES_PASSWORD: 123
       POSTGRES_DB: ady_database
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-
+      - pgdata_new:/var/lib/postgresql/data
 
   adminer:
     image: adminer
@@ -20,4 +19,4 @@ services:
       - "8080:8080"
 
 volumes:
-  pgdata:
+  pgdata_new:
