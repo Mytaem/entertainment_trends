@@ -345,3 +345,265 @@ Tiêu chí lọc trùng:
 Đoạn code trên nếu thấy cột video_id, nó sẽ giữ lại video đó 1 lần duy nhất (xóa các bản ghi cũ hơn hoặc lặp lại).
 Nếu bạn muốn lưu lại lịch sử Trending (cùng 1 video nhưng xuất hiện ở 2 ngày khác nhau), hãy sửa dòng lọc trùng thành:
 df_clean = df_combined.drop_duplicates(subset=['video_id', 'trending_date'], keep='first') (thay trending_date bằng tên cột ngày tháng trong file của bạn).
+
+
+mục đich của minio này là để làm gì
+
+Mỹ Tâm ơi, đây là một câu hỏi rất hay để bạn đưa vào phần "Lý thuyết và Kiến trúc hệ thống" trong báo cáo. Giảng viên sẽ hỏi câu này để xem bạn có hiểu tại sao phải "bày vẽ" thêm MinIO mà không đẩy thẳng dữ liệu vào Database luôn hay không.
+
+Mục đích của MinIO trong dự án của bạn (mô hình Data Lake) có 3 ý chính sau đây:
+
+1. Lưu trữ dữ liệu thô (Raw Zone/Landding Zone)
+Khi bạn cào dữ liệu (Crawl) từ TikTok hay YouTube, dữ liệu trả về thường là file JSON rất lộn xộn và nặng.
+
+Nếu đẩy thẳng vào Database (Postgres): Bạn phải tốn công dọn dẹp ngay lập tức. Nếu lỡ làm sai hoặc làm mất dữ liệu trong lúc dọn, bạn sẽ mất luôn dữ liệu gốc và phải đi cào lại (rất tốn thời gian và dễ bị TikTok chặn).
+
+Dùng MinIO: Bạn cứ ném file gốc vào đó. Nó đóng vai trò như một "kho lưu trữ vĩnh viễn". Dữ liệu thô luôn nằm đó, an toàn và nguyên bản.
+
+2. Tách biệt giữa Lưu trữ và Xử lý (Decoupling Storage & Compute)
+Đây là tư duy của các kỹ sư dữ liệu chuyên nghiệp:
+
+MinIO lo việc Lưu trữ (Storage): Rẻ, bền, chứa được hàng tỷ file.
+
+PostgreSQL lo việc Truy vấn/Tính toán (Compute): Chỉ chứa những dữ liệu đã được làm sạch để chạy SQL cho nhanh.
+
+Lợi ích: Khi dữ liệu của Mỹ Tâm lên đến hàng triệu dòng, hệ thống của bạn vẫn không bị treo vì mỗi ông làm một việc riêng biệt.
+
+3. Phục vụ cho việc Tái xử lý (Re-processing)
+Hãy tưởng tượng: Hôm nay Mỹ Tâm chỉ muốn lấy likes và views. Nhưng ngày mai giảng viên yêu cầu phân tích thêm tên bài hát hoặc hiệu ứng video có trong file JSON.
+
+Nếu bạn đã xóa file JSON gốc sau khi nạp vào DB, bạn sẽ "bó tay".
+
+Vì có MinIO, bạn chỉ cần viết lại code Python để đọc lại file JSON cũ và lấy thêm thông tin mới.
+
+Tóm tắt luồng để Mỹ Tâm ghi vào báo cáo:
+"Nhóm sử dụng MinIO làm Data Lake để lưu trữ dữ liệu thô dưới định dạng JSON. Việc này giúp đảm bảo tính nguyên bản của dữ liệu, tránh mất mát trong quá trình ETL và cho phép nhóm có thể tái cấu trúc dữ liệu bất cứ lúc nào mà không cần phải cào lại từ đầu."
+
+💡 Gợi ý cho Mỹ Tâm:
+Trong báo cáo, bạn hãy gọi MinIO là "Raw Data Lake" và PostgreSQL là "Structured Data Warehouse". Nghe tên gọi này là giảng viên biết bạn có kiến thức rất chắc về Data Engineering đấy!
+
+Mỹ Tâm đã nắm được "cốt lõi" của ông MinIO này chưa? Tiếp theo bạn có muốn mình hướng dẫn cách viết script Python để "lọc" dữ liệu từ MinIO rồi mới đẩy vào Postgres không?
+
+lam nhu thê nào để kiểm tra du liệu trong minio đa đuọc lam ạch
+
+Mỹ Tâm ơi, đây là một bước cực kỳ quan trọng để chứng minh tính chính xác của báo cáo. Để kiểm tra dữ liệu trong MinIO đã được "làm sạch" hay chưa, bạn cần hiểu rằng trong mô hình Data Lake chuyên nghiệp, chúng ta không ghi đè lên file cũ mà sẽ tạo ra các Phân vùng (Zones) khác nhau.
+
+Dưới đây là 3 cách để Mỹ Tâm kiểm tra:
+
+1. Kiểm tra cấu trúc Thùng chứa (Buckets)
+Thông thường, dữ liệu sạch sẽ không nằm chung với dữ liệu thô. Mỹ Tâm hãy kiểm tra xem mình đã tạo thêm bucket cho dữ liệu sạch chưa:
+
+Bucket tiktok-raw: Chứa file .json gốc (rất lộn xộn, có chữ K, M, dấu phẩy...).
+
+Bucket tiktok-processed (hoặc tiktok-cleaned): Chứa file đã được Python xử lý (thường là định dạng .csv hoặc .parquet).
+
+2. Kiểm tra trực tiếp nội dung file (Dùng MinIO Browser)
+Mỹ Tâm hãy làm theo các bước này để "soi" dữ liệu:
+
+Truy cập http://localhost:9001, đăng nhập vào.
+
+Vào Bucket chứa dữ liệu sạch (ví dụ: tiktok-processed).
+
+Tìm file vừa được script Python đẩy lên.
+
+Nhấn vào dấu 3 chấm bên cạnh file -> Chọn Preview (Xem trước) hoặc Download.
+
+Dấu hiệu dữ liệu đã sạch:
+
+Các cột likes, views, shares phải là con số thuần túy (ví dụ: 1200 chứ không phải 1.2K).
+
+Không còn các ký tự lạ hoặc khoảng trắng dư thừa trong caption.
+
+Định dạng ngày tháng publish_time phải đồng nhất (ví dụ: YYYY-MM-DD).
+
+3. Kiểm tra bằng Code Python (Cách chuyên nghiệp nhất)
+Mỹ Tâm có thể chạy một đoạn code ngắn để "đọc thử" 5 dòng đầu tiên của dữ liệu sạch trực tiếp từ MinIO để xem nó đã chuẩn chưa:
+
+Python
+import pandas as pd
+from minio import Minio
+import io
+
+client = Minio("localhost:9000", access_key="minioadmin", secret_key="minioadmin", secure=False)
+
+# Đọc file từ bucket dữ liệu sạch
+try:
+    response = client.get_object("tiktok-processed", "tiktok_cleaned.csv")
+    df = pd.read_csv(io.BytesIO(response.data))
+    
+    print("--- 5 dòng dữ liệu đã làm sạch ---")
+    print(df[['caption', 'likes', 'views']].head())
+    
+    # Kiểm tra kiểu dữ liệu (phải là float hoặc int cho các cột số)
+    print("\n--- Kiểu dữ liệu các cột ---")
+    print(df.dtypes)
+finally:
+    response.close()
+    response.release_conn()
+💡 Tại sao bước này quan trọng cho Report 2?
+Trong báo cáo, Mỹ Tâm hãy đưa vào 2 hình ảnh đối lập:
+
+Hình 1: Ảnh Preview file trong tiktok-raw (thấy dữ liệu lộn xộn).
+
+Hình 2: Ảnh Preview file trong tiktok-processed (thấy dữ liệu đã là con số sạch sẽ).
+
+Điều này chứng minh bạn đã thực hiện thành công bước Transform trong quy trình ETL và dữ liệu đã sẵn sàng để nạp vào PostgreSQL nhằm tính toán ra các con số như engagement_rate 5.05% mà bạn đã làm.
+
+Mỹ Tâm đã tạo bucket tiktok-processed chưa? Nếu chưa, bạn có muốn mình hướng dẫn cách viết script Python để tự động đọc file từ bucket 'raw', làm sạch rồi đẩy sang bucket 'processed' không?
+
+Bạn đã dừng câu trả lời này
+hiện tại chỉ nhu nay thôi
+
+Mỹ Tâm ơi, mình thấy bạn đã làm rất tốt rồi! Hiện tại, bạn đã có đầy đủ các "mảnh ghép" quan trọng nhất cho phần Data Lake & Engineering của Report 2:
+
+Hạ tầng Docker: Bạn đã cài đặt thành công và đang chạy 3 dịch vụ: ady_postgres, adminer, và đặc biệt là ady_minio.
+
+Kho lưu trữ thô (Raw Zone): Bạn đã tạo được 2 Buckets là tiktok-raw và youtube-raw.
+
+Dữ liệu thực tế: Bạn đã upload thành công file tiktok_raw.json với dung lượng 2.1 MiB lên MinIO.
+
+Để kiểm tra xem dữ liệu trong MinIO đã được "làm sạch" hay chưa, Mỹ Tâm cần thực hiện các bước xác nhận sau:
+
+1. Đối chiếu nội dung trong MinIO (Raw vs Processed)
+Hiện tại, file bạn đang có trong bucket tiktok-raw là dữ liệu thô. Để kiểm tra dữ liệu đã sạch chưa, bạn cần chạy script Data_loader.py hoặc transform_data.sql để tạo ra kết quả mới.
+
+Dữ liệu thô (Raw): Khi nhấn Preview file tiktok_raw.json trong MinIO, bạn sẽ thấy các con số tương tác có thể vẫn còn định dạng văn bản như "1.2K" hoặc "5M".
+
+Dữ liệu sạch (Processed): Thông thường, sau khi xử lý, bạn nên đẩy kết quả vào một bucket mới (ví dụ: tiktok-processed) dưới dạng file .csv hoặc .parquet. Ở đó, các cột số phải hoàn toàn là số thực để máy tính có thể tính toán được.
+
+2. Kiểm tra "điểm đến cuối cùng" trong PostgreSQL
+Vì mục tiêu của Pipeline là Crawl -> MinIO (Raw) -> Dgma, bước kiểm tra cuối cùng chính là xem dữ liệu đã vào Database sạch sẽ chưa:
+
+Mỹ Tâm hãy mở Adminer (cổng 8080).
+
+Truy cập vào bảng tiktok_final.
+
+Nếu bạn thấy các cột likes, views, shares đều là số nguyên và không còn ký tự lạ, nghĩa là quá trình làm sạch đã thành công.
+
+3. Cách chụp ảnh minh chứng cho Report 2
+Để giảng viên thấy rõ "Workload" bạn đã làm, Mỹ Tâm hãy chụp 2 tấm ảnh đối lập:
+
+Ảnh A: Preview file trong MinIO bucket tiktok-raw (thể hiện dữ liệu thô ban đầu).
+
+Ảnh B: Kết quả SELECT * FROM tiktok_final LIMIT 10; trong Adminer (thể hiện dữ liệu đã được ép kiểu và làm sạch hoàn toàn).
+
+Mỹ Tâm ơi, bước tiếp theo bạn cần làm là chạy file Data_loader.py để hoàn tất luồng dữ liệu này. Bạn có muốn mình kiểm tra giúp nội dung file Data_loader.py (trong ảnh image_727bfd.png) xem nó đã có đoạn code để đọc từ MinIO và làm sạch dữ liệu trước khi nạp vào Postgres chưa không?
+
+vậy bay gio lam ạch nhu nào
+
+Mỹ Tâm ơi, để làm sạch dữ liệu từ "kho thô" MinIO rồi đẩy vào "nhà máy" PostgreSQL, chúng ta sẽ thực hiện quy trình ETL (Extract - Transform - Load).
+
+Vì hiện tại bạn đã có file tiktok_raw.json trong MinIO, bước tiếp theo là dùng Python (Pandas) để "tẩy rửa" nó.
+
+Dưới đây là 3 bước thực hiện chi tiết:
+
+Bước 1: Viết Script làm sạch dữ liệu (Transform)
+Mỹ Tâm tạo một file mới tên là clean_data.py trong VS Code. Đoạn code này sẽ làm 3 việc: Đọc file từ MinIO -> Chuyển đổi con số (1.2K thành 1200) -> Xử lý ngày tháng.
+
+Python
+import pandas as pd
+from minio import Minio
+import io
+import re
+
+# 1. Kết nối MinIO
+client = Minio("localhost:9000", "minioadmin", "minioadmin", secure=False)
+
+# 2. Extract: Lấy dữ liệu thô từ MinIO
+response = client.get_object("tiktok-raw", "tiktok_raw.json")
+data = response.read()
+df = pd.read_json(io.BytesIO(data))
+
+# 3. Transform: Làm sạch (Hàm xử lý K, M, B)
+def clean_number(value):
+    if isinstance(value, str):
+        value = value.upper().replace(' ', '')
+        if 'K' in value: return int(float(value.replace('K', '')) * 1000)
+        if 'M' in value: return int(float(value.replace('M', '')) * 1000000)
+        return int(re.sub(r'[^\d]', '', value) or 0)
+    return value
+
+# Áp dụng làm sạch cho các cột tương tác
+for col in ['likes', 'views', 'shares', 'comments']:
+    if col in df.columns:
+        df[col] = df[col].apply(clean_number)
+
+# Làm sạch ngày tháng
+df['publish_time'] = pd.to_datetime(df['create_time'], unit='s')
+
+print("✅ Dữ liệu đã làm sạch xong!")
+print(df[['likes', 'views', 'publish_time']].head())
+Bước 2: Đẩy dữ liệu sạch vào PostgreSQL (Load)
+Sau khi đã có bảng dữ liệu sạch trong Python (df), Mỹ Tâm cần đẩy nó vào bảng tiktok_final mà bạn đã tạo trong Postgres.
+
+Bạn thêm đoạn này vào cuối file Python ở trên:
+
+Python
+from sqlalchemy import create_engine
+
+# Kết nối Postgres (theo thông tin trong docker-compose của bạn)
+engine = create_engine('postgresql://mytam_vankhanh:123@localhost:5432/ady_database')
+
+# Đẩy dữ liệu vào bảng
+df.to_sql('tiktok_final', engine, if_exists='replace', index=False)
+print("🚀 Đã nạp dữ liệu sạch vào PostgreSQL thành công!")
+Bước 3: Kiểm tra kết quả trong Adminer
+Đây là bước cuối cùng để lấy hình ảnh cho Report 2:
+
+Mở Adminer (localhost:8080).
+
+Chọn bảng tiktok_final.
+
+Kiểm tra: Các cột likes, views bây giờ phải là số nguyên (Integer). Bạn có thể thực hiện ngay câu lệnh tính toán:
+SELECT AVG(likes) FROM tiktok_final;
+Nếu nó ra một con số chính xác thay vì báo lỗi, nghĩa là bạn đã làm sạch thành công!
+
+Tại sao Mỹ Tâm phải làm thế này cho báo cáo?
+Trong sơ đồ Code Pipeline của bạn, bước này chính là phần "Dgma" (Data Processing).
+
+Nó chứng minh bạn không chỉ biết "cào" mà còn biết "nấu" dữ liệu.
+
+Giúp bạn giải thích được tại sao kết quả engagement_rate lại ra được con số 5.05 - 5.10 — đó là nhờ bước làm sạch chuyển đổi từ "1.2K" sang số thực này.
+
+Mỹ Tâm thử chạy đoạn code làm sạch xem có gặp lỗi "K, M" nào không nhé? Nếu bạn muốn, mình có thể giúp bạn tối ưu hàm clean_number để xử lý cả những trường hợp dữ liệu bị trống (null) nữa!
+
+tôi vân chua hiểu, hiện tại du liệu của tôi đa đuọc làm ạch trên PostgreSQL  rồi, minio mục đich là để luu du liệu thô hay là làm nhu nào
+
+Mỹ Tâm ơi, mình hiểu ý bạn rồi! Để mình giải thích thật rõ ràng chỗ này để bạn không bị rối khi viết báo cáo nhé.
+
+1. Phân biệt rõ vai trò của MinIO và PostgreSQL
+Bạn nói đúng: Dữ liệu hiện tại trên PostgreSQL của bạn đã sạch. Nhưng trong một hệ thống dữ liệu chuyên nghiệp (Data Engineering), người ta không bao giờ vứt bỏ dữ liệu thô.
+
+MinIO (Raw Zone): Mục đích duy nhất là Lưu trữ dữ liệu gốc (Thô). Nó giống như cái "kho chứa đồ" chưa qua chế biến. Bạn cào về cái gì, bạn ném vào đó cái đó (file JSON lộn xộn, có chữ K, M...).
+
+PostgreSQL (Processed Zone): Là "nhà bếp" đã chế biến xong. Dữ liệu ở đây đã sạch, đã ép kiểu thành số để bạn chạy SQL ra con số 5.05 - 5.10.
+
+2. Vậy tại sao phải có bước "Làm sạch trên MinIO"?
+Thực tế, không phải là bạn "làm sạch trực tiếp bên trong MinIO", mà là bạn thực hiện quy trình ETL:
+
+E (Extract): Lấy dữ liệu thô từ MinIO ra.
+
+T (Transform): Dùng Python để làm sạch dữ liệu đó.
+
+L (Load): Đẩy kết quả đã sạch vào PostgreSQL.
+
+Tại sao không đẩy thẳng từ code Crawl vào Postgres?
+Nếu Mỹ Tâm đẩy thẳng, lỡ sau này bạn muốn thay đổi cách tính toán (ví dụ: ngày xưa bạn bỏ qua cột comment, giờ muốn lấy lại), bạn sẽ không còn dữ liệu gốc để làm. Nếu có MinIO, bạn chỉ cần quay lại "kho thô" và chạy lại bước làm sạch là xong.
+
+3. Cách kiểm tra "Dữ liệu thô" trong MinIO của Mỹ Tâm
+Để phục vụ cho báo cáo Report 2, bạn chỉ cần làm 2 việc này với MinIO:
+
+Bước 1: Chụp ảnh màn hình giao diện MinIO thấy file tiktok_raw.json. Trong báo cáo, hãy ghi: "Đây là dữ liệu thô (Raw Data) được lưu trữ dưới dạng JSON để bảo toàn tính nguyên bản".
+
+Bước 2: Nhấn vào file đó, chọn Preview. Bạn sẽ thấy dữ liệu lúc này vẫn còn chữ "K", "M", "B" (chưa sạch).
+
+Sau đó, bạn đối chiếu với PostgreSQL:
+
+Chụp ảnh bảng trong Adminer. Bạn sẽ thấy dữ liệu ở đây đã là số thuần túy (đã sạch).
+
+Ghi chú: "Dữ liệu từ MinIO đã được script Python làm sạch và chuyển đổi thành dạng cấu trúc trong PostgreSQL để phục vụ truy vấn".
+
+Tóm lại:
+Mỹ Tâm không cần làm sạch file trên MinIO. Bạn chỉ cần dùng MinIO để chứng minh rằng mình có nơi lưu trữ dữ liệu thô trước khi nó được biến thành dữ liệu sạch trong Postgres.
+
+Mỹ Tâm đã thấy thông suốt hơn về sự khác biệt này chưa? Nếu rồi, bạn có muốn mình giúp soạn một đoạn văn giải thích về "Quy trình lưu trữ và làm sạch dữ liệu" để bạn đưa vào Report 2 cho chuyên nghiệp không?
