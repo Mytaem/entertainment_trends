@@ -53,18 +53,7 @@ def clean_caption(text: str):
     text = re.sub(r'^Video TikTok từ\s+@\w+.*?:', '', text, flags=re.I)
     return text.strip(' "\n')
 
-def to_number(s: str) -> float:
-    if not s:
-        return 0.0
-    s = s.upper().replace(',', '')
-    if 'K' in s:
-        return float(s.replace('K', '')) * 1_000
-    if 'M' in s:
-        return float(s.replace('M', '')) * 1_000_000
-    try:
-        return float(s)
-    except:
-        return 0.0
+
 
 def extract_metric(pattern, text):
     m = re.search(pattern, text, re.I)

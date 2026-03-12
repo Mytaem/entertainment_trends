@@ -607,3 +607,52 @@ Tóm lại:
 Mỹ Tâm không cần làm sạch file trên MinIO. Bạn chỉ cần dùng MinIO để chứng minh rằng mình có nơi lưu trữ dữ liệu thô trước khi nó được biến thành dữ liệu sạch trong Postgres.
 
 Mỹ Tâm đã thấy thông suốt hơn về sự khác biệt này chưa? Nếu rồi, bạn có muốn mình giúp soạn một đoạn văn giải thích về "Quy trình lưu trữ và làm sạch dữ liệu" để bạn đưa vào Report 2 cho chuyên nghiệp không?
+
+Chào Mỹ Tâm! Với tư cách là Leader, mình sẽ giúp bạn chuyển đổi những phân tích từ bài Report 2 thành các biểu đồ trực quan (Visualization) chuyên nghiệp cho Phần 3 của bài Report 3, bám sát nền tảng TikTok nhé.
+
+Dưới đây là 3 biểu đồ "đắt giá" nhất được trích xuất từ dữ liệu thực tế trong báo cáo của bạn:
+
+3.1. Phân tích Khung giờ vàng (Engagement by Hour)
+Dựa trên bảng dữ liệu trang 4 của Report 2, chúng ta sẽ trực quan hóa tỉ lệ tương tác theo giờ.
++1
+
+
+Nhận xét chuyên sâu: "Tỉ lệ tương tác bắt đầu tăng mạnh từ sau 17 giờ (4.61%) và đạt đỉnh cực đại vào lúc 22 giờ với 7.15%. Điều này phản ánh hành vi người dùng tập trung giải trí mạnh nhất vào buổi tối trước khi đi ngủ."
++2
+
+
+Kiến nghị: "Nhà sáng tạo nên tập trung đăng tải nội dung trong khung giờ từ 19h - 22h để đón đầu dòng lưu lượng truy cập lớn nhất và khả năng vào xu hướng cao nhất."
++1
+
+3.2. Tác động của Clickbait đến hiệu quả video
+Dựa trên bảng so sánh tại trang 5 của Report 2, biểu đồ này sẽ cho thấy sự khác biệt giữa nội dung chuẩn và nội dung giật gân.
++1
+
+
+Nhận xét chuyên sâu: "Nội dung có Clickbait giúp tăng lượt xem trung bình lên mức 1,234,106 view (tăng ~27% so với nội dung chuẩn). Tuy nhiên, tỉ lệ tương tác chỉ tăng nhẹ (từ 5.04% lên 5.28%), cho thấy Clickbait hiệu quả trong việc thu hút sự chú ý ban đầu nhưng không quyết định sự tương tác sâu của người dùng."
++4
+
+3.3. Đặc điểm của Video lên xu hướng (Trending vs Non-Trending)
+Dựa trên phân tích thuật toán tại trang 5 và 6, biểu đồ này giải mã lý do video vào xu hướng.
++1
+
+
+Nhận xét chuyên sâu: "Sự khác biệt lớn nhất nằm ở tính lan tỏa: video trending có lượt Share cao gấp ~98 lần và Comments cao gấp ~64 lần so với video thường. Thuật toán TikTok ưu tiên đặc biệt cho các video có khả năng tạo ra thảo luận và chia sẻ cộng đồng."
++1
+
+3.4. Hiệu quả theo thứ trong tuần (Virality by Day)
+Dựa trên dữ liệu trang 6, chúng ta phân tích ngày nào trong tuần là "vua" lượt xem.
++1
+
+
+Nhận xét chuyên sâu: "Thứ Năm (Thursday) là ngày có lượt xem trung bình cao nhất đạt 1,137,202 view. Tuy nhiên, Thứ Bảy (Saturday) lại là ngày người dùng hào hứng tương tác nhất với tỉ lệ 5.21%."
++1
+
+💡 Hướng dẫn cho Leader Mỹ Tâm cách trình bày vào Word:
+Chèn hình ảnh: Bạn hãy dùng các biểu đồ tương ứng đã vẽ từ RStudio dán vào.
+
+Ghi chú hình: Luôn có dòng "Hình X: Phân tích [Tên biểu đồ] trên 4,045 bản ghi TikTok" ở dưới mỗi hình.
+
+Bôi đậm số liệu: Trong phần nhận xét, hãy bôi đậm các con số như 7.15%, 22h, hoặc 98 lần để giảng viên thấy được sự nhạy bén với dữ liệu của bạn.
+
+Mỹ Tâm đã dán được biểu đồ "Giờ vàng 22h" vào bài chưa? Nếu xong rồi, bảo mình để mình hướng dẫn bạn viết phần Kết luận chiến lược cuối bài nhé!

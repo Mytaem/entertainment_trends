@@ -115,3 +115,52 @@ SELECT TO_CHAR(publish_time, 'Day') AS thu_trong_tuan,
 FROM tiktok_final 
 GROUP BY 1, EXTRACT(DOW FROM publish_time) ORDER BY EXTRACT(DOW FROM publish_time);
 
+###############################################################
+#Phan tich cac thu trong tuàn
+SELECT 
+    TO_CHAR(publish_time::TIMESTAMP + INTERVAL '7 hours', 'Day') AS thu_trong_tuan,
+    EXTRACT(DOW FROM publish_time::TIMESTAMP + INTERVAL '7 hours') AS so_thu_tu,
+    COUNT(*) AS so_luong_video,
+    -- Ép kiểu views sang số trước khi tính trung bình
+    ROUND(AVG(views::NUMERIC)) AS view_trung_binh
+FROM 
+    raw_youtube
+GROUP BY 
+    thu_trong_tuan, so_thu_tu
+ORDER BY 
+    so_thu_tu;
+
+#phan tich khung gio vang youtube tại VN
+SELECT 
+    -- Công thức tính giờ 
+    EXTRACT(HOUR FROM (publish_time::TIMESTAMP + INTERVAL '7 hours')) AS gio_dang_vn,
+    
+    COUNT(*) AS so_luong_video,
+    
+    -- Ép kiểu view sang số (Numeric) để tránh lỗi nếu cột đang là Text
+    ROUND(AVG(views::NUMERIC)) AS view_trung_binh
+FROM 
+    raw_youtube 
+GROUP BY 
+    EXTRACT(HOUR FROM (publish_time::TIMESTAMP + INTERVAL '7 hours'))
+ORDER BY 
+    so_luong_video DESC;
+
+
+#Ti lẹ tuong tac theo danh muc
+SELECT 
+    category_name AS danh_muc,
+    COUNT(*) AS so_luong_video,
+    ROUND(
+        (SUM(likes::NUMERIC) + SUM(comments::NUMERIC)) / NULLIF(SUM(views::NUMERIC), 0) * 100, 
+        2
+    ) AS ty_le_tuong_tac
+FROM 
+    raw_youtube 
+WHERE 
+    category_name IS NOT NULL
+GROUP BY 
+    category_name
+ORDER BY 
+    ty_le_tuong_tac DESC
+LIMIT 10;    
