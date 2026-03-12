@@ -656,3 +656,201 @@ Ghi chú hình: Luôn có dòng "Hình X: Phân tích [Tên biểu đồ] trên 
 Bôi đậm số liệu: Trong phần nhận xét, hãy bôi đậm các con số như 7.15%, 22h, hoặc 98 lần để giảng viên thấy được sự nhạy bén với dữ liệu của bạn.
 
 Mỹ Tâm đã dán được biểu đồ "Giờ vàng 22h" vào bài chưa? Nếu xong rồi, bảo mình để mình hướng dẫn bạn viết phần Kết luận chiến lược cuối bài nhé!
+
+Bạn làm rất tốt việc kéo đúng số liệu và trình bày vào form cực kỳ chuyên nghiệp.
+
+Tuy nhiên, với con mắt "soi" bài của giảng viên chấm điểm, mình đã phát hiện ra 2 điểm "sai rò rỉ" giữa bức ảnh RStudio và phần chữ bạn viết bên dưới. Nếu nộp luôn sẽ bị trừ điểm vô lý đó. Bạn mở file Word ra và sửa lại ngay 2 chỗ này nhé:
+
+1. Lỗi chép nhầm số liệu (Ở dòng dấu chấm bi đầu tiên)
+Trong ảnh RStudio: Cột views hiện rõ Mean : 3811225 và Median : 1096505.
+
+Trong phần chữ của bạn: Bạn đang viết là "Lượt xem trung bình (Mean) đạt mức ấn tượng là 3811225, trong khi giá trị trung vị (Median) là 3811225." 👉 Cách sửa: Bạn copy nhầm số Mean dán qua Median rồi. Hãy sửa lại đúng thành: "...trong khi giá trị trung vị (Median) là 1096505."
+
+2. Mâu thuẫn logic dữ liệu (Ở phần 1. Kiểm tra tính toàn vẹn)
+Trong ảnh RStudio: Lệnh colSums cho ra kết quả engagement_rate = 1. Lệnh summary bên dưới cũng báo NA's : 1. Điều này nghĩa là trong gần 10.000 video của bạn, có 1 video bị lỗi khuyết thiếu dữ liệu (có thể video đó có 0 view nên khi lấy Like chia cho View bị lỗi toán học).
+
+Trong phần chữ của bạn: Bạn lại ghi là "Tập dữ liệu YouTube hoàn toàn sạch, không có giá trị khuyết thiếu (NA = 0)..." 👉 Cách sửa (Rất quan trọng): Đừng nói dối dữ liệu, giảng viên soi số thấy số 1 chình ình kìa. Bạn hãy sửa lại câu nhận xét thành như sau để thể hiện sự sắc sảo:
+
+"Nhận xét: Tập dữ liệu YouTube khá sạch, chỉ có duy nhất 1 giá trị khuyết thiếu (NA) ở cột engagement_rate (có thể do lỗi dữ liệu chia cho 0 view). Tỉ lệ lỗi này là cực kỳ nhỏ (1/9828 bản ghi) và không làm ảnh hưởng đến độ chính xác cho các phép toán thống kê và trực quan hóa phía sau."
+
+Bạn chỉ cần sửa 2 dòng chữ đó trong file Word là phần Thống kê mô tả này đạt điểm tối đa (10/10) luôn! Sửa xong rồi bạn báo mình một tiếng để chúng ta tiến vào phần quan trọng nhất: Vẽ biểu đồ Histogram và Line Chart nhé! Sắp xong báo cáo rồi, cố lên!
+
+ình cần văn bản như này để bổ sung thêm vào báo cáo
+
+Gemini said
+Mình hiểu ý bạn rồi, đây là đoạn văn bản tổng hợp toàn bộ các câu lệnh R từ đầu đến giờ, được trình bày theo đúng form mẫu của bài TikTok để bạn copy thả thẳng vào file Word báo cáo nhé.
+
+Ở đoạn này, mình đã điều chỉnh lại số dòng (9,828 dòng) và thư viện kết nối (RPostgres thay vì RPostgreSQL cũ) cho chuẩn xác với những gì bạn đã chạy thành công trên máy.
+
+Bạn copy nguyên phần văn bản dưới đây nha:
+
+1. Khai báo thư viện và Kết nối
+library(DBI)
+library(RPostgres)
+library(dplyr)
+library(lubridate)
+
+conn <- dbConnect(RPostgres::Postgres(),
+host = "localhost", port = 5432,
+dbname = "ady_database", user = "postgres", password = "Mật_khẩu_của_bạn")
+
+2. Lấy dữ liệu YouTube (9,828 dòng)
+df_youtube <- dbGetQuery(conn, "SELECT * FROM youtube_final")
+
+3. Tiền xử lý dữ liệu (Ép kiểu thời gian và tính tỉ lệ tương tác)
+df_youtube <- df_youtube %>%
+mutate(
+publish_time = ymd_hms(publish_time),
+engagement_rate = ((likes + comments) / views) * 100
+)
+
+4. Xem cấu trúc dữ liệu (Để làm Data Dictionary)
+str(df_youtube)
+
+5. Kiểm tra dữ liệu thiếu
+colSums(is.na(df_youtube))
+
+💡 Mẹo nhỏ cho báo cáo: Bạn có thể bôi đen đoạn text trên trong Word, đổi sang font chữ Courier New hoặc Consolas và in nghiêng/in đậm một chút để nó nhìn giống mã code thật sự (như cách nhóm làm TikTok đã làm). Chỗ password = "Mật_khẩu_của_bạn", bạn có thể cứ để chữ "123" hoặc gõ đại một dấu *** vào báo cáo để bảo mật nha, giảng viên không trừ điểm chỗ đó đâu.
+
+Bạn bổ sung đoạn này vào bài đi nhé, nhìn báo cáo sẽ rất chuyên nghiệp và có tính hệ thống. Xong phần này là chúng ta chính thức bước sang phần vẽ biểu đồ được rồi!
+
+với dữ liệu của youtube thì phần trực quan hóa mình nên làm gì
+
+Gemini said
+Tuyệt vời, chúng ta đã đến phần "ăn điểm" nhất của Report 3: Trực quan hóa dữ liệu (Data Visualization / EDA)!
+
+Đối với nền tảng YouTube, dữ liệu có những đặc thù rất riêng (ví dụ: view chênh lệch cực lớn giữa video flop và video triệu view, thời lượng dài, tính năng tìm kiếm mạnh...). Do đó, bạn nên vẽ 3 - 4 biểu đồ sau đây để đưa vào báo cáo. Nó vừa dễ chạy code bằng RStudio, vừa có rất nhiều thứ hay ho để viết nhận xét.
+
+Dưới đây là kịch bản chi tiết kèm code R cho từng biểu đồ để bạn copy chạy thử:
+
+1. Biểu đồ Histogram: Phân bố Lượt xem (Views Distribution)
+Mục đích: Xem thử đa số video trên YouTube tập trung ở mức view nào. Vì view YouTube chênh lệch rất khủng khiếp, ta bắt buộc phải dùng thang đo Log10 để biểu đồ không bị biến dạng.
+
+Code RStudio:
+
+R
+# Gọi thư viện vẽ biểu đồ
+library(ggplot2)
+library(scales) # Dùng để định dạng số cho đẹp
+
+ggplot(df_youtube, aes(x = views)) +
+  geom_histogram(bins = 30, fill = "#FF0000", color = "black", alpha = 0.8) +
+  scale_x_log10(labels = comma) + # Ép thang đo Log10
+  labs(
+    title = "PHÂN BỐ LƯỢT XEM CÁC VIDEO TRÊN YOUTUBE",
+    x = "Lượt xem (Thang đo Log10)",
+    y = "Số lượng Video"
+  ) +
+  theme_minimal()
+Mẫu nhận xét cho Word: "Biểu đồ Histogram cho thấy phân bố lượt xem của YouTube có dạng lệch phải (Right-skewed) rất mạnh. Đa số video chỉ đạt mức view trung bình hoặc thấp, nhưng có một cái đuôi rất dài kéo về bên phải đại diện cho các video 'viral' hoặc video 'evergreen' (có giá trị xem lại cao theo thời gian). Điều này phản ánh đúng thuật toán đề xuất của YouTube: Mảnh đất màu mỡ chủ yếu dành cho top những nhà sáng tạo nội dung chất lượng nhất."
+
+2. Biểu đồ Scatter Plot: Mối tương quan giữa Lượt Thích (Likes) và Lượt Xem (Views)
+Mục đích: Chứng minh giả thuyết: "Video càng nhiều Like thì thuật toán YouTube càng đề xuất mạnh, dẫn đến View càng cao".
+
+Code RStudio:
+
+R
+ggplot(df_youtube, aes(x = likes, y = views)) +
+  geom_point(color = "#282828", alpha = 0.4, size = 2) +
+  geom_smooth(method = "lm", color = "#FF0000", linetype = "dashed", size = 1) +
+  scale_x_log10(labels = comma) +
+  scale_y_log10(labels = comma) +
+  labs(
+    title = "MỐI TƯƠNG QUAN GIỮA LƯỢT THÍCH VÀ LƯỢT XEM",
+    x = "Lượt Thích (Likes)",
+    y = "Lượt Xem (Views)"
+  ) +
+  theme_minimal()
+Mẫu nhận xét cho Word: "Đường hồi quy tuyến tính (màu đỏ) dốc lên rõ rệt thể hiện mối tương quan thuận cực kỳ chặt chẽ giữa lượt Thích và lượt Xem. Khác với TikTok đôi khi view tăng do người dùng lướt vô thức, trên YouTube, nút Like đóng vai trò như một 'tín hiệu tín nhiệm' (Trust Signal) vô cùng mạnh mẽ. Video có tỷ lệ Like cao sẽ được thuật toán ưu tiên đẩy lên Tab Thịnh hành hoặc thanh 'Up Next' (Video tiếp theo)."
+
+3. Biểu đồ Bar Chart: Top các Thể loại (Category) được xem nhiều nhất
+Mục đích: Trả lời câu hỏi "Làm nội dung chủ đề gì trên YouTube thì dễ có view nhất?".
+
+Code RStudio:
+
+R
+# Tính tổng view theo từng thể loại và lấy top 10
+df_category <- df_youtube %>%
+  group_by(category_name) %>%
+  summarise(avg_views = mean(views, na.rm = TRUE)) %>%
+  arrange(desc(avg_views)) %>%
+  head(10)
+
+ggplot(df_category, aes(x = reorder(category_name, avg_views), y = avg_views)) +
+  geom_col(fill = "#FF0000", color = "black", alpha = 0.8) +
+  coord_flip() + # Xoay ngang biểu đồ cho dễ đọc tên thể loại
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "TOP 10 THỂ LOẠI CÓ LƯỢT XEM TRUNG BÌNH CAO NHẤT",
+    x = "Thể loại (Category)",
+    y = "Lượt xem trung bình"
+  ) +
+  theme_minimal()
+Mẫu nhận xét cho Word: "Biểu đồ cột chỉ ra rõ ràng sự áp đảo của các thể loại như [Bạn nhìn biểu đồ hiện ra tên gì thì điền vào đây, vd: Music, Entertainment, Gaming...]. Điều này hoàn toàn dễ hiểu vì YouTube vẫn là nền tảng giải trí và nghe nhạc dài hạn số 1 toàn cầu, người dùng thường có xu hướng bật các playlist nhạc hoặc gameshow và để đó trong thời gian dài (Session time cao)."
+
+4. Biểu đồ Line Chart: Phân tích Khung giờ đăng bài (Publish Time)
+Mục đích: Xem giờ nào đăng video thì thu được lượng view trung bình cao nhất.
+
+Code RStudio:
+
+R
+# Tạo cột giờ đăng bài và tính view trung bình theo giờ
+df_time <- df_youtube %>%
+  mutate(post_hour = hour(publish_time)) %>%
+  group_by(post_hour) %>%
+  summarise(avg_views = mean(views, na.rm = TRUE))
+
+ggplot(df_time, aes(x = post_hour, y = avg_views)) +
+  geom_line(color = "#FF0000", size = 1.2) +
+  geom_point(color = "black", size = 3) +
+  scale_x_continuous(breaks = 0:23) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "HIỆU QUẢ LƯỢT XEM TRUNG BÌNH THEO KHUNG GIỜ ĐĂNG BÀI",
+    x = "Giờ đăng bài (00h - 23h)",
+    y = "Lượt xem trung bình"
+  ) +
+  theme_minimal()
+Mẫu nhận xét cho Word: "Đường xu hướng (Line trend) cho thấy sự biến động của lượt xem dựa vào thời điểm xuất bản video. Khung giờ tối ưu để đăng bài thường rơi vào [Nhìn biểu đồ xem đỉnh cao nhất ở số mấy thì điền vào, vd: 14h-16h chiều]. Lý do là YouTube cần thời gian vài tiếng để 'index' (lập chỉ mục) nội dung, việc đăng vào buổi chiều sẽ giúp video có đủ đà đẩy lên mạnh mẽ nhất vào khung giờ vàng buổi tối khi người xem thực sự rảnh rỗi."
+
+Bạn muốn bắt đầu chạy thử đoạn code số mấy trước? Cứ dán vào RStudio bôi đen và bấm Run, nếu biểu đồ hiện ra đẹp ở góc dưới bên phải màn hình thì bạn bấm nút Export -> Save as Image để lưu ảnh nét căng dán vào Word nhé! Mắc ở đâu cứ báo mình.
+
+Gemini said
+Mình thấy ở góc dưới bên phải màn hình của bạn đã xuất hiện biểu đồ Line Chart phân tích khung giờ vàng cực kỳ đẹp rồi kìa! 🎉 Biểu đồ cho thấy rất rõ đỉnh view rơi vào tầm 13h trưa và 17h chiều. Bạn làm rất xuất sắc!
+
+Về lỗi màu đỏ Error: object 'comma' not found khi bạn bôi đen chạy thử đoạn code thứ 2 (Scatter Plot), nguyên nhân rất đơn giản: RStudio chưa hiểu lệnh comma (định dạng số có dấu phẩy phân cách hàng nghìn) là gì, vì lệnh này nằm trong một gói thư viện mở rộng tên là scales.
+
+Để khắc phục, bạn chỉ cần làm theo 2 bước nhanh gọn sau:
+
+Bước 1: Cài đặt gói scales (Chỉ cần chạy 1 lần)
+Bạn dán dòng này vào cửa sổ Console (ngay sau dấu >) và nhấn Enter để RStudio tải gói về nhé:
+
+R
+install.packages("scales")
+Bước 2: Bổ sung lệnh gọi thư viện và chạy lại code
+Sau khi RStudio báo tải xong, bạn hãy sửa lại đoạn code vẽ Scatter Plot ở cửa sổ phía trên một chút. Bạn cần thêm dòng library(scales) vào trước khối lệnh vẽ.
+
+Bạn copy nguyên đoạn dưới đây, bôi đen tất cả và bấm Run nhé:
+
+R
+# Bắt buộc phải gọi 2 thư viện này trước khi vẽ
+library(ggplot2)
+library(scales) 
+
+# Code vẽ Scatter Plot
+ggplot(df_youtube, aes(x = likes, y = views)) +
+  geom_point(color = "#282828", alpha = 0.4, size = 2) +
+  geom_smooth(method = "lm", color = "#FF0000", linetype = "dashed", size = 1) +
+  scale_x_log10(labels = comma) +
+  scale_y_log10(labels = comma) +
+  labs(
+    title = "MỐI TƯƠNG QUAN GIỮA LƯỢT THÍCH VÀ LƯỢT XEM",
+    x = "Lượt Thích (Likes)",
+    y = "Lượt Xem (Views)"
+  ) +
+  theme_minimal()
+Lần này biểu đồ phân tán (Scatter Plot) với đường xu hướng màu đỏ chắc chắn sẽ hiện ra mượt mà.
+
+💡 Mẹo nhỏ lưu ảnh đưa vào Word: Ở ngay trên cái biểu đồ Line Chart bên phải màn hình của bạn, có một chữ Export nhỏ xinh. Bạn click vào đó > chọn Save as Image... > chỉnh độ phân giải cho nét rồi lưu lại để dán vào báo cáo nhé.
+
+Bạn chạy thử đoạn code mới xem biểu đồ đã hiện ra chưa nha!
